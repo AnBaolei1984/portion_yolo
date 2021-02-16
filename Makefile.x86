@@ -1,0 +1,45 @@
+top_dir = ../../..
+sdk_dir = $(top_dir)/bm1684
+install_dir = $(top_dir)/install
+
+CXX = g++
+
+INC_DIR = -I/usr/local/include
+INC_DIR += -I/usr/local/include/opencv4/
+INC_DIR += -I$(sdk_dir)/include/bmruntime
+INC_DIR += -I$(sdk_dir)/include/bmlib
+INC_DIR += -I$(sdk_dir)/include/third_party/boost/include
+
+CXXFLAGS := -g -O2 -Wall -std=c++11 -fuse-ld=gold $(INC_DIR)
+
+LDLIBS := -lbmrt -lbmcv -ldl -lbmlib\
+	-lopencv_core -lopencv_imgproc -lopencv_imgcodecs -lopencv_videoio \
+	-lprotobuf -lglog -lboost_system -lboost_filesystem -lpthread
+
+LIB_DIR = -L/usr/local/lib
+LIB_DIR += -L$(sdk_dir)/lib/bmnn/cmodel -L$(sdk_dir)/lib/thirdparty/x86
+
+LDFLAGS = -Wl,-rpath=/usr/local/lib
+LDFLAGS += -Wl,-rpath=$(sdk_dir)/lib/bmnn/cmodel
+
+LDFLAGS += $(LIB_DIR)
+
+all: yolo_test
+
+yolo_test: main.cpp yolov3.cpp
+	$(CXX) $^ $(CXXFLAGS) $(LDLIBS) $(LDFLAGS) -o $@
+
+clean:
+	rm -f yolo_test
+	rm -f out-*.jpg
+loops=1
+int8:
+	@mkdir -p $(top_dir)/res/image/yolo
+	@cp $(top_dir)/res/image/vehicle_1.jpg $(top_dir)/res/image/yolo
+	LD_LIBRARY_PATH=$(sdk_dir)/lib/bmnn/cmodel:$(sdk_dir)/lib/thirdparty/x86:$(sdk_dir)/lib/decode \
+	./yolo_test image $(top_dir)/res/image/yolo/vehicle_1.jpg ../model/out/yolov3_int8_1b_4b.bmodel $(loops)
+f32:
+	@mkdir -p $(top_dir)/res/image/yolo
+	@cp $(top_dir)/res/image/vehicle_1.jpg $(top_dir)/res/image/yolo
+	LD_LIBRARY_PATH=$(sdk_dir)/lib/bmnn/cmodel:$(sdk_dir)/lib/thirdparty/x86:$(sdk_dir)/lib/bmcv \
+	./yolo_test image $(top_dir)/res/image/yolo/vehicle_1.jpg ../model/out/yolov3_fp32_1b_4b.bmodel $(loops)
